@@ -15,7 +15,7 @@ class PagoRepository{
     public function create(PagoModel $pago): bool
     {
         $sql = "INSERT INTO pago (IdUsuario, PayData, Referencia, Monto, CreateDate, Estatus) 
-                VALUES (:idUsuario, :payData, :referencia, :monto, NOW(), :estatus)";
+                VALUES (:idUsuario, :payData, :referencia, :monto, UTC_TIMESTAMP(), :estatus)";
         
         $stmt = $this->db->prepare($sql);
         $success = $stmt->execute([
@@ -43,7 +43,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    p.CreateDate, 
+                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail
@@ -122,7 +122,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    p.CreateDate, 
+                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail
@@ -173,7 +173,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    p.CreateDate, 
+                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail

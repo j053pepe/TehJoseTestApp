@@ -3,16 +3,57 @@
 use FrameworkX\App;
 use Psr\Http\Message\ServerRequestInterface;
 use React\Http\Message\Response;
-use AppPHP\RedPay\Settings\XContainerAdaptador;
+use GuzzleHttp\Client; // Importamos la clase Client de Guzzle
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
-return function (App $app, XContainerAdaptador $adaptador) {
-    // Obtener las instancias de los controladores y middlewares desde el contenedor
-    $accountController = $adaptador->get(AppPHP\RedPay\Controllers\AccountController::class);
-    $webhookController = $adaptador->get(AppPHP\RedPay\Controllers\WebHookController::class);
-    $messageController = $adaptador->get(AppPHP\RedPay\Controllers\MessageController::class);
-    $pagoController = $adaptador->get(AppPHP\RedPay\Controllers\PagoController::class);
-    $paisController = $adaptador->get(AppPHP\RedPay\Controllers\PaisController::class);
-    $tokenMiddleware = $adaptador->get(AppPHP\RedPay\Middlewares\TokenMiddleware::class);
+use AppPHP\RedPay\Repositories\UserRepository;
+use AppPHP\RedPay\Repositories\WebhookRepository;
+use AppPHP\RedPay\Repositories\PagoRepository;
+use AppPHP\RedPay\Repositories\PaisRepository;
+use AppPHP\RedPay\Repositories\CompanyRepository;
+
+use AppPHP\RedPay\Controllers\AccountController;
+use AppPHP\RedPay\Controllers\WebHookController;
+use AppPHP\RedPay\Controllers\MessageController;
+use AppPHP\RedPay\Controllers\PagoController;
+use AppPHP\RedPay\Controllers\PaisController;
+
+use AppPHP\RedPay\Middlewares\TokenMiddleware;
+use AppPHP\RedPay\Services\PagoService;
+use AppPHP\RedPay\Services\ApiService;
+
+return function (App $app) {
+    // Crear un cliente Guzzle para las peticiones HTTP
+    $guzzleClient = new Client();
+    // Logger
+    $logPath = __DIR__ . '/../../app.log';
+    $logger = new Logger('myAppLogger');
+    $logger->pushHandler(new StreamHandler($logPath, Logger::DEBUG));
+    // Crear una instancia del servicio de API
+    $apiService = new ApiService($guzzleClient, $logger);
+    // Crear una instancia del servicio de pago
+    $pagoService = new PagoService(
+        new PagoRepository(),
+        new CompanyRepository(),
+        $apiService,
+        $logger
+    );    
+    // Middleware de token
+    $tokenMiddleware = new TokenMiddleware($logger);
+    // AccountController
+    $userRepository = new UserRepository();
+    $accountController = new AccountController($userRepository, $logger);
+    // MessageController
+    $messageController = new MessageController($logger);
+    // WebhookController
+    $webhookRepository = new WebhookRepository();
+    $webhookController = new WebHookController($webhookRepository, $pagoService, $logger);
+    // PagoController
+    $pagoController = new PagoController($pagoService, $logger);
+    // PaisController
+    $paisRepository = new PaisRepository();
+    $paisController = new PaisController($paisRepository);
 
     // Definir las rutas de la API
     $app->get('/api', function () {

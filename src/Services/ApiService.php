@@ -8,14 +8,17 @@ use AppPHP\RedPay\Models\ApiHostModel;
 use GuzzleHttp\Promise\PromiseInterface;
 use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Promise\Promise;
+use Monolog\Logger;
 
 class ApiService
 {
     private Client $httpClient;
+    private Logger $logger;
 
-    public function __construct(Client $httpClient)
+    public function __construct(Client $httpClient, Logger $logger)
     {
         $this->httpClient = $httpClient;
+        $this->logger = $logger;
     }
 
     public function SendPayToApi(ApiHostModel $settings, array $data = []): PromiseInterface
@@ -23,14 +26,17 @@ class ApiService
         // Configurar los encabezados
         $headers = [];
         if (!empty($settings->base64Credentials)) {
+            $this->logger->info("Configurando autenticación básica para la API.");
             $headers['Authorization'] = 'Basic ' . $settings->base64Credentials;
         }
 
         // Configurar la solicitud según la acción
         $options = ['headers' => $headers];
         if (in_array(strtoupper($settings->acction), ['POST', 'PUT', 'PATCH'])) {
+            $this->logger->info("Configurando datos para la acción: " . strtoupper($settings->acction));
             $options['json'] = $data; // Datos como cuerpo JSON
         } elseif (strtoupper($settings->acction) === 'GET') {
+            $this->logger->info("Configurando parámetros de consulta para la acción GET.");
             $options['query'] = $data; // Datos como parámetros de consulta
         }
 
@@ -45,6 +51,7 @@ class ApiService
                 default => throw new \InvalidArgumentException("Acción no soportada: " . $settings->acction),
             };
         } catch (\InvalidArgumentException $e) {
+            $this->logger->error("Error en la acción: " . $e->getMessage());
             // Manejar la excepción de acción no soportada
             return \GuzzleHttp\Promise\rejection_for('Error: ' . $e->getMessage());
         }

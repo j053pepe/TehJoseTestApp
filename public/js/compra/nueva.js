@@ -33,6 +33,8 @@ document.getElementById('frmPagar').addEventListener('submit', function(event) {
   });
 
 document.addEventListener('DOMContentLoaded', function () {
+    createNewReference();
+
     CallApiWithTokenCallback("/api/pais", 'get', '', true,result => {
         if (result.status === 'success') {
             const select = document.getElementById('Country');
@@ -97,3 +99,17 @@ document.getElementById("ReferenceNumber").addEventListener("change", function()
         }
     });
 });
+
+function createNewReference() {
+    let now = new Date();
+    let reference = "Compra-" +
+    now.getFullYear().toString() +
+    (now.getMonth() + 1).toString().padStart(2, '0') +
+    now.getDate().toString().padStart(2, '0') + "-" +
+    now.getHours().toString().padStart(2, '0') +
+    now.getMinutes().toString().padStart(2, '0') +
+    now.getSeconds().toString().padStart(2, '0');
+
+    console.log('Referencia generada:', reference);
+    document.getElementById('ReferenceNumber').value = reference;
+}

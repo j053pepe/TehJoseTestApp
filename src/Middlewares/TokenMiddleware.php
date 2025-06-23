@@ -6,33 +6,40 @@ use Psr\Http\Message\ResponseInterface;
 use React\Http\Message\Response;
 use Firebase\JWT\JWT; 
 use Firebase\JWT\Key;
+use Monolog\Logger;
 
 class TokenMiddleware
 {
-    public function __invoke(ServerRequestInterface $request, callable $next): ResponseInterface
+    private Logger $logger;
+    public function __construct(Logger $logger)
     {
-        // Obtener el token del header
+        $this->logger = $logger;
+    }
+
+        public function __invoke(ServerRequestInterface $request, callable $next): ResponseInterface
+    {
         $token = $request->getHeaderLine('Authorization');
-    
-        // Validar el token
+
         if (!$this->isValidToken($token)) {
+            $this->logger->warning('Token inválido recibido', ['token' => $token]);
             return new Response(401, ['Content-Type' => 'application/json'], json_encode(['error' => 'Token inválido']));
         }
-    
-        // Decodificar el token para obtener el payload
-        $decodedToken = $this->decodeToken($token);
-    
-        // Extraer el IdUsuario del payload del token
+
+        try {
+            $decodedToken = $this->decodeToken($token);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al decodificar token', ['exception' => $e]);
+            return new Response(401, ['Content-Type' => 'application/json'], json_encode(['error' => 'Token no válido']));
+        }
+
         $IdUsuario = $decodedToken->user->id ?? null;
-    
+
         if (!$IdUsuario) {
+            $this->logger->warning('Token no contiene IdUsuario válido');
             return new Response(401, ['Content-Type' => 'application/json'], json_encode(['error' => 'Token no contiene información del usuario']));
         }
-    
-        // Agregar el IdUsuario a la solicitud
+
         $request = $request->withAttribute('user_id', $IdUsuario);
-    
-        // Continuar con el siguiente middleware o el controlador
         return $next($request);
     }
     public function validateToken(string $token) {
@@ -56,6 +63,7 @@ class TokenMiddleware
     {
         // Verificar si el token es nulo o vacío
         if ($token === null || trim($token) === '') {
+            $this->logger->warning('Token no proporcionado o vacío');
             return false;
         }
 
@@ -64,6 +72,7 @@ class TokenMiddleware
 
         // Verificar si el token está vacío después de eliminar "Bearer "
         if (trim($token) === '') {
+            $this->logger->warning('Token vacío después de eliminar "Bearer "');
             return false;
         }
 
@@ -82,11 +91,15 @@ class TokenMiddleware
 
         // Clave secreta para decodificar el token
         $claveSecreta = $_ENV['Secret_Key'];
+        if (empty($claveSecreta)) {
+            throw new \Exception("Clave secreta no configurada en el entorno");
+        }
 
         try {
             // Decodificar el token
             return JWT::decode($token, new Key($claveSecreta, 'HS256'));
         } catch (\Exception $e) {
+            $this->logger->error('Error al decodificar el token', ['exception' => $e]);
             throw new \Exception("Error al decodificar el token: " . $e->getMessage());
         }
     }

@@ -10,7 +10,7 @@ class WebhookModel
 
        public function __construct(
         ?int $idTransaction, 
-        ?string $logWebhook, // <--- ¡CAMBIO AQUÍ! Ahora espera un string (JSON) o null
+        array|string|null $logWebhook,  // ← acepta array o string
         ?string $typeRequest, 
         ?string $date,
         ?int $idWebhookLog = null // Establecerlo como opcional (null por defecto)

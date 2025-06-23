@@ -105,5 +105,5 @@
     </div>
   </div>
 </div>
-<script src="../public/js/login.js"></script>
+<script src="../public/js/login.js?v=<?= time() ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

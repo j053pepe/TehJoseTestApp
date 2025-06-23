@@ -9,19 +9,12 @@ error_reporting(E_ALL);
 // Cargar el archivo .env
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
-// Cargar el contenedor de dependencias
-$containerFactory = require __DIR__ . '/src/Settings/dependencies.php';
-$container = $containerFactory();
 
-use AppPHP\RedPay\Settings\XContainerAdaptador;
-
-$adaptadorContenedor = new XContainerAdaptador($container);
-
-$app = new FrameworkX\App($adaptadorContenedor);
+$app = new FrameworkX\App();
 
 // Cargar rutas API y pasar el contenedor
 $apiRoutes = require __DIR__ . '/src/Settings/api.php';
-$apiRoutes($app, $adaptadorContenedor);
+$apiRoutes($app);
 
 require __DIR__ . '/src/Settings/view.php';
 

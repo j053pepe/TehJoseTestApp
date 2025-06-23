@@ -1,23 +1,12 @@
-# Habilitar el motor de reescritura
 RewriteEngine On
 
-# Permitir acceso a archivos estáticos antes de redirigir a index.php
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-
-# Conservar el encabezado Authorization
+# Pasar header Authorization a PHP
 RewriteCond %{HTTP:Authorization} ^(.*)
-RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%1]
 
-# Redirigir todas las solicitudes a index.php
+# Si no es archivo real
+RewriteCond %{REQUEST_FILENAME} !-f
+# Si no es directorio real
+RewriteCond %{REQUEST_FILENAME} !-d
+# Redirigir a index.php
 RewriteRule ^ index.php [QSA,L]
-
-# Permitir acceso al favicon
-RewriteCond %{REQUEST_URI} ^/favicon.ico$ [NC]
-RewriteRule ^ - [L]
-
-# Configuración de CORS
-Header set Access-Control-Allow-Origin "*"
-
-LimitRequestBody 10485760 # 10 MB

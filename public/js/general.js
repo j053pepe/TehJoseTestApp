@@ -47,7 +47,7 @@ async function CallApi(apiUrl, type, data, isToken) {
             body: data ? JSON.stringify(data) : null
         });
 
-        if (!response.ok) {
+        if (!response.ok || response.status === 400) {
             if (response.status === 404 || response.status === 500) {
                 swal.fire({
                     title: 'Error',

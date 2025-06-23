@@ -1,9 +1,7 @@
 <?php
 namespace AppPHP\RedPay\Repositories;
-
 use AppPHP\RedPay\Models\WebhookModel;
 use AppPHP\RedPay\Settings\Database;
-
 class WebhookRepository
 {
     private $db;
@@ -12,9 +10,9 @@ class WebhookRepository
         // Obtener la instancia de la conexión a la base de datos
         $this->db = Database::getInstance()->getConnection();
     }
-
     public function create(WebhookModel $webhook): bool
     {
+        try {
         $stmt = $this->db->prepare("INSERT INTO webhooklog (IdTransaction, LogWebhook, TypeRequest, Date) VALUES (?, ?, ?, ?)");
         return $stmt->execute([
             $webhook->idTransaction,
@@ -22,17 +20,18 @@ class WebhookRepository
             $webhook->typeRequest,
             $webhook->date
         ]);
+        } catch (\Exception $e) {
+            throw new \Exception("Error al crear el webhook: " . $e->getMessage());
+        }
     }
     public function getAllWebhooks(bool $includeLog = false)
     {
         try {
             $stmt = $this->db->query("SELECT idWebhookLog, idTransaction, logWebhook, typeRequest, date FROM webhooklog ORDER BY date DESC");
             $webhooks = [];
-
             // Convertir los registros en objetos WebhookModel
             while ($row = $stmt->fetch()) {
                 $logWebhookDecoded = []; // Inicializar siempre la variable como array vacío
-            
                 if ($includeLog) {
                     // Decodificar el JSON almacenado en logWebhook
                     $logWebhookDecoded = json_decode($row['logWebhook'], true); // Si la decodificación falla, se asignará null
@@ -41,7 +40,6 @@ class WebhookRepository
                         $logWebhookDecoded = [];
                     }
                 }
-            
                 // Pasamos $logWebhookDecoded, que ahora siempre será un array (o array vacío en caso de error de decodificación)
                 $webhooks[] = new WebhookModel(
                     $row['idTransaction'],
@@ -51,7 +49,6 @@ class WebhookRepository
                     $row['idWebhookLog'] // Ahora también incluye el idWebhookLog
                 );
             }            
-
             return $webhooks;
         } catch (\Exception $e) {
             throw new \Exception("Error al obtener los logs: " . $e->getMessage());
@@ -63,36 +60,28 @@ class WebhookRepository
             // Preparar la consulta para evitar inyección SQL
             $stmt = $this->db->prepare("SELECT idWebhookLog, logWebhook FROM webhooklog WHERE idWebhookLog = ?");
             $stmt->execute([$idLog]);
-
             // Obtener el resultado
             $row = $stmt->fetch();
-
             if (!$row) {
                 return null; // Si no hay registro, devolver null
             }
-
             // Decodificar el JSON almacenado en logWebhook
             $logWebhookDecoded = json_decode($row['logWebhook'], true);
-
             // Verificar si hubo error en la decodificación del JSON
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("Error al decodificar el JSON: " . json_last_error_msg());
             }
-
             // Asegúrate de que el valor es un array o null antes de pasarlo
             if (!is_array($logWebhookDecoded)) {
                 $logWebhookDecoded = null;  // O asignar un valor por defecto si lo prefieres
             }
-
             // Devolver solo los valores específicos en un array
             return [
                 'idWebhookLog' => $row['idWebhookLog'],
                 'logWebhook' => $logWebhookDecoded
             ];
-
         } catch (\Exception $e) {
             throw new \Exception("Error al obtener el Log: " . $e->getMessage());
         }
     }
-
 }
