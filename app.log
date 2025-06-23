@@ -14,3 +14,4 @@
 [2025-04-12T08:09:18.323321+02:00] myLogg.ERROR: ¡Este es un error! [] []
 [2025-04-12T09:47:06.382697+02:00] myAppLogger.INFO: Llamando a GetAllPay [] []
 [2025-04-12T19:09:17.781436+02:00] myAppLogger.INFO: Llamando a GetAllPay [] []
+[2025-06-22T17:26:43.386993+00:00] myAppLogger.INFO: Llamando a GetAllPay [] []
