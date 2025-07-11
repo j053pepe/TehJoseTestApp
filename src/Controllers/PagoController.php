@@ -6,16 +6,18 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use React\Http\Message\Response as ReactResponse;
 use GuzzleHttp\Promise\PromiseInterface;
-use Monolog\Logger;
 
 use AppPHP\RedPay\Services\PagoService;
 use AppPHP\RedPay\Models\ResponseModel;
+use AppPHP\RedPay\Services\AppLoggerService;
+use AppPHP\RedPay\Enums\LoggType;
+
 class PagoController
 {
     private PagoService $pagoService;
-    private Logger $logger;
+    private AppLoggerService $logger;
 
-    public function __construct(PagoService $pagoService, Logger $logger)
+    public function __construct(PagoService $pagoService, AppLoggerService $logger)
     {
         $this->logger = $logger;
         $this->pagoService = $pagoService;
@@ -26,35 +28,32 @@ class PagoController
         try {
             // Obtener el ID del usuario desde los atributos del request
             $IdUsuario = $request->getAttribute('user_id');
+            $this->logger->Create(LoggType::info, "PagoController - Create por Usuario: {$IdUsuario}", ['request' => $request]);
 
             if (!$IdUsuario) {
+                $this->logger->Create(LoggType::error,"PagoController - Usuario no autenticado.", ['request' => $request]);
                 throw new \Exception("Usuario no autenticado.");
             }
 
-            // Obtener los datos de la solicitud
             $body = (string) $request->getBody();
             $data = json_decode($body, true);
 
-            // Llamar a CreatePay, que ahora retorna un ResponseModel directamente
             $resultService = $this->pagoService->CreatePay($data, $IdUsuario);
 
-            // Si el status es 'error', devolver un Response con el error
             if ($resultService->status === 'error') {
-                // Loguear el error si ocurre una excepción
-                $this->logger->error("Error en CreatePay: " . $resultService->message, ['data' => $data]);
+                $this->logger->Create(LoggType::error, "PagoController - Error al crear el pago.", ['result' => $resultService]);
                 return new ReactResponse(400, ['Content-Type' => 'application/json'], json_encode($resultService));
             }
 
-            // Si todo salió bien, devolver un Response con el éxito
             return new ReactResponse(200, ['Content-Type' => 'application/json'], json_encode($resultService));
 
         } catch (\Exception $e) {
-            $this->logger->error("Error en CreatePay: " . $e->getMessage(), ['exception' => $e]);
-            // Loguear el error si ocurre una excepción
-            error_log("Error en CreatePay: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine());
-            error_log($e->getTraceAsString()); // Mostrar toda la pila de ejecución
+            $this->logger->Create(LoggType::error, "PagoController - Error en CreatePay: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
-            // Si ocurre un error general, devolver un Response con el mensaje de error
             return new ReactResponse(500, ['Content-Type' => 'application/json'], json_encode([
                 'status' => 'error',
                 'message' => 'Error inesperado en el servicio de pago: ' . $e->getMessage()
@@ -64,13 +63,13 @@ class PagoController
 
     public function GetAll(ServerRequestInterface $request): Response
     {
-        try {
-            $this->logger->info("Llamando a GetAllPay");
-            // Llamar a GetAllPay
+        try {            
+            $IdUsuario = $request->getAttribute('user_id');
+            $this->logger->Create(LoggType::info, "PagoController - GetAll por Usuario: {$IdUsuario}", ['request' => $request]);
             $resultService = $this->pagoService->GetAllPay();
 
-            // Si el status es 'error', devolver un Response con el error
             if ($resultService->status === 'error') {
+                $this->logger->Create(LoggType::error, "PagoController - Error al obtener todos los pagos.", ['result' => $resultService]);
                 return new ReactResponse(400, ['Content-Type' => 'application/json'], json_encode($resultService));
             }
 
@@ -78,11 +77,11 @@ class PagoController
             return new ReactResponse(200, ['Content-Type' => 'application/json'], json_encode($resultService));
 
         } catch (\Exception $e) {
-            // Loguear el error si ocurre una excepción
-            error_log("Error en GetAllPay: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine());
-            error_log($e->getTraceAsString()); // Mostrar toda la pila de ejecución
-
-            // Si ocurre un error general, devolver un Response con el mensaje de error
+            $this->logger->Create(LoggType::critical, "PagoController - Exception: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return new ReactResponse(500, ['Content-Type' => 'application/json'], json_encode([
                 'status' => 'error',
                 'message' => 'Error inesperado en el servicio de pago: ' . $e->getMessage()
@@ -93,22 +92,24 @@ class PagoController
     public function GetByReference(ServerRequestInterface $request): Response
     {
         try {
+            $IdUsuario = $request->getAttribute('user_id');
+            $this->logger->Create(LoggType::info, "PagoController - GetByReference por Usuario: {$IdUsuario}", ['request' => $request]);
+            
             $reference = $request->getAttribute('reference');
             if (!$reference) {
+                $this->logger->Create(LoggType::error, "PagoController - Referencia no proporcionada.", ['request' => $request]);
                 throw new \Exception("Referencia no proporcionada.");
             }
-            // Llamar a GetByReference
             $resultService = $this->pagoService->FindReference($reference);
 
-            // Si todo salió bien, devolver un Response con el éxito
             return new ReactResponse(200, ['Content-Type' => 'application/json'], json_encode($resultService));
 
         } catch (\Exception $e) {
-            // Loguear el error si ocurre una excepción
-            error_log("Error en GetByReference: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine());
-            error_log($e->getTraceAsString()); // Mostrar toda la pila de ejecución
-
-            // Si ocurre un error general, devolver un Response con el mensaje de error
+            $this->logger->Create(LoggType::critical, "PagoController - Exception: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return new ReactResponse(500, ['Content-Type' => 'application/json'], json_encode([
                 'status' => 'error',
                 'message' => 'Error inesperado en el servicio de pago: ' . $e->getMessage()

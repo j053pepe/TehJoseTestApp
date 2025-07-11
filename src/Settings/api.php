@@ -18,10 +18,12 @@ use AppPHP\RedPay\Controllers\WebHookController;
 use AppPHP\RedPay\Controllers\MessageController;
 use AppPHP\RedPay\Controllers\PagoController;
 use AppPHP\RedPay\Controllers\PaisController;
+use AppPHP\RedPay\Controllers\LogViewerController;
 
 use AppPHP\RedPay\Middlewares\TokenMiddleware;
 use AppPHP\RedPay\Services\PagoService;
 use AppPHP\RedPay\Services\ApiService;
+use AppPHP\RedPay\Services\AppLoggerService;
 
 return function (App $app) {
     // Crear un cliente Guzzle para las peticiones HTTP
@@ -30,31 +32,34 @@ return function (App $app) {
     $logPath = __DIR__ . '/../../app.log';
     $logger = new Logger('myAppLogger');
     $logger->pushHandler(new StreamHandler($logPath, Logger::DEBUG));
+    // Registrar Servicio de Logger
+    $serviceLogger = new AppLoggerService($logger);
     // Crear una instancia del servicio de API
-    $apiService = new ApiService($guzzleClient, $logger);
+    $apiService = new ApiService($guzzleClient, $serviceLogger);
     // Crear una instancia del servicio de pago
     $pagoService = new PagoService(
         new PagoRepository(),
         new CompanyRepository(),
         $apiService,
-        $logger
+        $serviceLogger
     );    
     // Middleware de token
-    $tokenMiddleware = new TokenMiddleware($logger);
+    $tokenMiddleware = new TokenMiddleware($serviceLogger);
     // AccountController
     $userRepository = new UserRepository();
-    $accountController = new AccountController($userRepository, $logger);
+    $accountController = new AccountController($userRepository, $serviceLogger);
     // MessageController
-    $messageController = new MessageController($logger);
+    $messageController = new MessageController();
     // WebhookController
     $webhookRepository = new WebhookRepository();
-    $webhookController = new WebHookController($webhookRepository, $pagoService, $logger);
+    $webhookController = new WebHookController($webhookRepository, $pagoService, $serviceLogger);
     // PagoController
-    $pagoController = new PagoController($pagoService, $logger);
+    $pagoController = new PagoController($pagoService, $serviceLogger);
     // PaisController
     $paisRepository = new PaisRepository();
     $paisController = new PaisController($paisRepository);
-
+    // LoggerController
+    $loggerController = new LogViewerController();
     // Definir las rutas de la API
     $app->get('/api', function () {
         return new Response(200, ['Content-Type' => 'text/plain'], "Hello everybody!\n");
@@ -95,4 +100,6 @@ return function (App $app) {
     $app->get('/api/user', $tokenMiddleware, [$accountController, 'GetAll']);
     $app->put('/api/user/status/{id}', $tokenMiddleware, [$accountController, 'UpdateStatus']);
     $app->put('/api/user/{id}', $tokenMiddleware, [$accountController, 'Update']);
+    $app->get('/api/log', [$loggerController, 'get']); // Para mostrar los últimos 50 registros por defecto
+    $app->get('/api/log/{lines}', [$loggerController, 'get']); // Para especificar el número de líneas
 };

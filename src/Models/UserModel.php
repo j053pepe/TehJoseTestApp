@@ -7,11 +7,11 @@ class UserModel
     public string $username;
     public string $email;
     public string $password;
-    public string $createDate;
+    public ?string $createDate;
     public bool $active;
     public ?bool $isReadOnly;
 
-    public function __construct(?string $usuarioId, string $username, string $email, string $password, string $createDate, bool $active, ?bool $isreadonly=false)
+    public function __construct(?string $usuarioId, string $username, string $email, string $password, ?string $createDate="", ?bool $active=false, ?bool $isreadonly=false)
     {
         $this->usuarioId = $usuarioId;
         $this->username = $username;

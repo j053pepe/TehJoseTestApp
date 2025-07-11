@@ -3,13 +3,16 @@ namespace AppPHP\RedPay\Repositories;
 
 use AppPHP\RedPay\Models\PagoModel;
 use AppPHP\RedPay\Settings\Database;
+use AppPHP\RedPay\Services\HelperService;
 
 class PagoRepository{
     private $db;
+    private HelperService $helperService;
     public function __construct()
     {
         // Obtener la instancia de la conexión a la base de datos
         $this->db = Database::getInstance()->getConnection();
+        $this->helperService = new HelperService();
     }
 
     public function create(PagoModel $pago): bool
@@ -43,7 +46,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
+                    p.CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail
@@ -71,7 +74,7 @@ class PagoRepository{
                     $payDataDecoded, // PayData decodificado (siempre un array)
                     $row['Referencia'],
                     $row['Monto'],
-                    $row['CreateDate'],
+                    $this->helperService->dateToString($row['CreateDate']),
                     $row['Estatus'],
                     $row['IdPago'],
                     $row['IdUsuario'],
@@ -122,7 +125,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
+                    p.CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail
@@ -149,7 +152,7 @@ class PagoRepository{
                     $payDataDecoded, // PayData decodificado (siempre un array)
                     $row['Referencia'],
                     $row['Monto'],
-                    $row['CreateDate'],
+                    $this->helperService->dateToString($row['CreateDate']),
                     $row['Estatus'],
                     $row['UsuarioNombre'],$row['UsuarioEmail'],
                     $row['IdPago'],                    
@@ -173,7 +176,7 @@ class PagoRepository{
                     p.PayData, 
                     p.Referencia, 
                     p.Monto, 
-                    CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate,
+                    p.CreateDate,
                     p.Estatus, 
                     u.Username AS UsuarioNombre, 
                     u.Email AS UsuarioEmail
@@ -195,7 +198,7 @@ class PagoRepository{
                 $payDataDecoded, // PayData decodificado (siempre un array)
                 $row['Referencia'],
                 $row['Monto'],
-                $row['CreateDate'],
+                $this->helperService->dateToString($row['CreateDate']),
                 $row['Estatus'],
                 $row['UsuarioNombre'],
                 $row['UsuarioEmail'],

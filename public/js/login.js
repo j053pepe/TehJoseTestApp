@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             event.preventDefault(); // Evita que el formulario se envíe de manera tradicional
             $('#loginModal').modal('hide'); // Ocultar el modal al cargar la página
             // Obtén los datos del formulario
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
             // Llama a CallApi y maneja la respuesta

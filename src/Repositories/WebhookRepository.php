@@ -10,16 +10,44 @@ class WebhookRepository
         // Obtener la instancia de la conexión a la base de datos
         $this->db = Database::getInstance()->getConnection();
     }
-    public function create(WebhookModel $webhook): bool
+    public function create(WebhookModel $webhook)
     {
         try {
-        $stmt = $this->db->prepare("INSERT INTO webhooklog (IdTransaction, LogWebhook, TypeRequest, Date) VALUES (?, ?, ?, ?)");
-        return $stmt->execute([
-            $webhook->idTransaction,
-            json_encode($webhook->logWebhook),
-            $webhook->typeRequest,
-            $webhook->date
-        ]);
+            $logWebhookDecoded = [];
+            // Buscar si ya existe un webhook con el mismo idTransaction y si existe regresamos lo que tiene
+            $stmt = $this->db->prepare("SELECT idWebhookLog, idTransaction, logWebhook, typeRequest, date FROM webhooklog WHERE IdTransaction = ? ORDER BY date DESC");
+            $stmt->execute([$webhook->idTransaction]);
+            $count = $stmt->rowCount();
+            if ($count > 0) {
+                $row = $stmt->fetch();
+                return new WebhookModel(
+                    $row['idTransaction'],
+                    $row['logWebhook'], // Siempre un array
+                    $row['typeRequest'],
+                    $row['date'],
+                    $row['idWebhookLog'] // Ahora también incluye el idWebhookLog
+                );
+            }
+            else {
+                $stmt = $this->db->prepare("INSERT INTO webhooklog (IdTransaction, LogWebhook, TypeRequest, Date) VALUES (?, ?, ?, ?)");
+                $stmt->execute([
+                    $webhook->idTransaction,
+                    json_encode($webhook->logWebhook),
+                    $webhook->typeRequest,
+                    $webhook->date
+                ]);
+
+                // Obtener el ID del último registro insertado
+                $idWebhookLog = $this->db->lastInsertId();
+                // Crear un nuevo objeto WebhookModel con el ID del registro insertado
+                return new WebhookModel(
+                    $webhook->idTransaction,
+                    $webhook->logWebhook, // Siempre un array
+                    $webhook->typeRequest,
+                    $webhook->date,
+                    $idWebhookLog // Ahora también incluye el idWebhookLog
+                );
+            }
         } catch (\Exception $e) {
             throw new \Exception("Error al crear el webhook: " . $e->getMessage());
         }

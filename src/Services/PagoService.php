@@ -13,17 +13,18 @@ use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Promise\RejectedPromise;
-use Monolog\Logger;
+use AppPHP\RedPay\Services\AppLoggerService;
+use AppPHP\RedPay\Enums\LoggType;
 
 class PagoService
 {
     private PagoRepository $pagaRepo;
     private ApiService $apiEnvioService;
     private CompanyRepository $companyRepo;
-    private Logger $logger;
+    private AppLoggerService $logger;
     private int $idCompany;
 
-    public function __construct(PagoRepository $pagaRepo, CompanyRepository $companyRepo, ApiService $apiEnvioService, Logger $logger)
+    public function __construct(PagoRepository $pagaRepo, CompanyRepository $companyRepo, ApiService $apiEnvioService, AppLoggerService $logger)
     {
         $this->pagaRepo = $pagaRepo;
         $this->apiEnvioService = $apiEnvioService;
@@ -38,7 +39,7 @@ class PagoService
             //Validar que la referencia no exista ya 
             $pagoExistente = $this->pagaRepo->GetByReference($data["ReferenceNumber"]);
             if ($pagoExistente) {
-                $this->logger->warning("Referencia ya existe en la base de datos", ['reference' => $data["ReferenceNumber"]]);
+                $this->logger->Create(LoggType::warning,"PagoService - Referencia ya existe en la base de datos", ['reference' => $data["ReferenceNumber"]]);
                 return new ResponseModel('error', 'La referencia ya existe en la base de datos.', [$pagoExistente]);
             }
             // Crear el objeto PagoModel
@@ -62,7 +63,7 @@ class PagoService
 
             // Si no se encuentran los datos de la compañía, retornar un ResponseModel con error
             if ($settings === null) {
-                $this->logger->error("No se encontraron los datos de la compañía con ID: {$this->idCompany}");
+                $this->logger->Create(LoggType::error,"PagoService - No se encontraron los datos de la compañía con ID: {$this->idCompany}");
                 return new ResponseModel('error', 'No se encontraron los datos de la compañía');
             }
 
@@ -74,14 +75,12 @@ class PagoService
             
             return $result; // Retornar el resultado de la promesa
         } catch (\Exception $e) {   
-            $this->logger->error("Error en CreatePay: " . $e->getMessage(), [
+            $this->logger->Create(LoggType::critical,"PagoService - Error en CreatePay: ", $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'data' => $data,
                 'IdUsuario' => $IdUsuario
             ]);
-            // Si ocurre un error, loguearlo y retornar un ResponseModel con error
-            error_log("Error en CreatePay: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine());
             return new ResponseModel('error', 'Error general: ' . $e->getMessage());
         }
     }
@@ -94,24 +93,23 @@ class PagoService
             $settings = $this->GetSettings($this->idCompany, ApiType::ApiResponse);
             // Si no se encuentran los datos de la compañía, retornar un ResponseModel con error
             if ($settings === null) {
-                $this->logger->error("No se encontraron los datos de la compañía con ID: {$this->idCompany}");
+                $this->logger->Create(LoggType::error,"PagoService - No se encontraron los datos de la compañía con ID: {$this->idCompany}");
                 return new ResponseModel('error', 'No se encontraron los datos de la compañía');
             }
             else {
                 $settings->url = $settings->url . $id;
             }
-            $this->logger->info("Obteniendo pago de la API con ID: {$id}", ['settings' => $settings]);
+            $this->logger->Create(LoggType::info,"PagoService - Obteniendo pago de la API con ID: {$id}", ['settings' => $settings]);
             $result = $this->handleApiResponse($settings, [], null);
 
             return $result; // Retornar el resultado de la promesa
         } catch (\Exception $e) {
             // Manejar errores de la base de datos
-            $this->logger->error("Error al obtener pago de la API: " . $e->getMessage(), [
+            $this->logger->Create(LoggType::critical,"PagoService - Error al obtener pago de la API: " , $e->getMessage(), [
                 'id' => $id,
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            error_log("Error al obtener pagos: " . $e->getMessage());
             return new ResponseModel("error", "Error al obtener pagos: " . $e->getMessage());
         }
     }
@@ -122,19 +120,17 @@ class PagoService
             // Obtener todos los pagos
             $pagos = $this->pagaRepo->GetAllPay();
             if($pagos === null) {
-                $this->logger->warning("No se encontraron pagos en la base de datos.");
+                $this->logger->Create(LoggType::error,"PagoService - No se encontraron pagos en la base de datos.");
                 return new ResponseModel("error", "No se encontraron pagos.");
             } else {
-                $this->logger->info("Pagos obtenidos con éxito.", ['count' => count($pagos)]);
+                $this->logger->Create(LoggType::info,"PagoService - Pagos obtenidos con éxito.", ['count' => count($pagos)]);
                 return new ResponseModel("success", "Pagos obtenidos con éxito.", $pagos);
             }
         } catch (\Exception $e) {
-            $this->logger->error("Error al obtener pagos: " . $e->getMessage(), [
+            $this->logger->Create(LoggType::critical,"PagoService - Error al obtener pagos: " , $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            // Manejar errores de la base de datos
-            error_log("Error al obtener pagos: " . $e->getMessage());
             return new ResponseModel("error", "Error al obtener pagos: " . $e->getMessage());
         }
     }
@@ -145,29 +141,24 @@ class PagoService
             // Buscar el pago por referencia
             $pago = $this->pagaRepo->GetByReference($reference);
             if ($pago) {
-                $this->logger->info("Referencia encontrada en la base de datos.", ['reference' => $reference]);
+                $this->logger->Create(LoggType::error,"PagoService - Referencia encontrada en la base de datos.", ['reference' => $reference]);
                 return new ResponseModel("error", "Referencia usada previamente.");
             } else {
-                $this->logger->info("Referencia no encontrada en la base de datos.", ['reference' => $reference]);
+                $this->logger->Create(LoggType::info,"PagoService - Referencia no encontrada en la base de datos.", ['reference' => $reference]);
                 return new ResponseModel("success", "Se puede usar la referencia.");
             }
         } catch (\Exception $e) {
-            $this->logger->error("Error al buscar pago por referencia: " . $e->getMessage(), [
+            $this->logger->Create(LoggType::critical,"PagoService - Error al buscar pago por referencia: " , $e->getMessage(), [
                 'reference' => $reference,
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            // Manejar errores de la base de datos
-            error_log("Error al buscar pago: " . $e->getMessage());
             return new ResponseModel("error", "Error al buscar pago: " . $e->getMessage());
         }
     }
 
     private function determinarEstadoPago(array $apiResponse): string
     {
-        // Implementa la lógica para determinar el estado del pago
-        // basado en la respuesta de la API externa.
-        // Ejemplo:
         if ($apiResponse['responseCode'] === "002") {
             return "Pagado";
         } elseif ($apiResponse['status'] === "003") {
@@ -175,7 +166,7 @@ class PagoService
         } elseif ($apiResponse['status'] === "007") {
             return "En Revisión";
         } else {
-            return "Error"; // O algún otro estado por defecto
+            return "Error"; 
         }
     }
 
@@ -197,13 +188,11 @@ class PagoService
     {
         try {
             $apiResponse = $this->apiEnvioService->SendPayToApi($settings, $data)->wait();
-    
-            // Decodificar la respuesta JSON a un array
             $responseData = json_decode($apiResponse->getBody()->getContents(), true);
     
             // Verificar si la decodificación fue exitosa
             if ($responseData === null && json_last_error() !== JSON_ERROR_NONE) {
-                $this->logger->error('Error al decodificar la respuesta JSON', [
+                $this->logger->Create(LoggType::error,'PagoService - Error al decodificar la respuesta JSON', [
                     'error' => json_last_error_msg(),
                     'response' => $apiResponse->getBody()->getContents()
                 ]);
@@ -221,7 +210,7 @@ class PagoService
                 $responseData
             );
         } catch (GuzzleException $e) {
-            $this->logger->error('Error al enviar datos a la API externa', [
+            $this->logger->Create(LoggType::critical,'PagoService - Error al enviar datos a la API externa', [
                 'error' => $e->getMessage(),
                 'data' => $data,
                 'itemPago' => $itemPago
@@ -229,12 +218,11 @@ class PagoService
             // Manejar errores de Guzzle
             return new ResponseModel('error', 'Error al enviar datos a la API externa: ' . $e->getMessage());
         } catch (\Exception $e) {
-            $this->logger->error('Error desconocido al manejar la respuesta de la API', [
+            $this->logger->Create(LoggType::critical,'PagoService - Error desconocido al manejar la respuesta de la API', [
                 'error' => $e->getMessage(),
                 'data' => $data,
                 'itemPago' => $itemPago
             ]);
-            // Manejar otros errores
             return new ResponseModel('error', 'Error desconocido: ' . $e->getMessage());
         }
     }

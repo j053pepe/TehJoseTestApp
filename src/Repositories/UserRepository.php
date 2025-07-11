@@ -3,19 +3,23 @@ namespace AppPHP\RedPay\Repositories;
 
 use AppPHP\RedPay\Models\UserModel;
 use AppPHP\RedPay\Settings\Database;
+use AppPHP\RedPay\Services\HelperService;
 
 class UserRepository
 {
     private $db;
+    private HelperService $helperService;
     public function __construct()
     {
         // Obtener la instancia de la conexión a la base de datos
         $this->db = Database::getInstance()->getConnection();
+        $this->helperService = new HelperService();
     }
 
     public function findByEmail(string $email): ?UserModel
     {
-        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password, CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate, Active 
+        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password, 
+            CreateDate, Active 
             FROM usuario 
             WHERE email = :email 
             LIMIT 1
@@ -24,27 +28,29 @@ class UserRepository
         $row = $stmt->fetch();
 
         return $row 
-            ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'], $row['CreateDate'], $row['Active']) 
+            ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'],$this->helperService->dateToString($row['CreateDate']), $row['Active']) 
             : null;
 
     }
 
     public function findByUserName(string $username): ?UserModel
     {
-        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password, CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate, Active FROM usuario WHERE username = :username LIMIT 1");
+        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password,
+        CreateDate, Active FROM usuario WHERE username = :username LIMIT 1");
         $stmt->execute(['username' => $username]);
         $row = $stmt->fetch();
 
-        return $row ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'], $row['CreateDate'], $row['Active']) : null;
+        return $row ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'], $this->helperService->dateToString($row['CreateDate']), $row['Active']) : null;
     }
 
     public function findById(string $idUser): ?UserModel
     {
-        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password, CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate, Active FROM usuario WHERE IdUsuario = :idUser LIMIT 1");
+        $stmt = $this->db->prepare("SELECT IdUsuario, Username, Email, Password, 
+        CreateDate, Active FROM usuario WHERE IdUsuario = :idUser LIMIT 1");
         $stmt->execute(['idUser' => $idUser]);
         $row = $stmt->fetch();
-
-        return $row ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'], $row['CreateDate'], $row['Active']) : null;
+        
+        return $row ? new UserModel($row['IdUsuario'], $row['Username'], $row['Email'], $row['Password'], $this->helperService->dateToString($row['CreateDate']), $row['Active']) : null;
     }
 
     public function createUser(UserModel $user): bool
@@ -64,11 +70,12 @@ class UserRepository
 
     public function getAllUsers(): array
     {
-        $stmt = $this->db->query("SELECT IdUsuario, Username, Email, Password, CONVERT_TZ(p.CreateDate, 'UTC', 'America/Mexico_City') AS CreateDate, Active FROM usuario");
+        $stmt = $this->db->query("SELECT IdUsuario, Username, Email, Password, 
+        CreateDate, Active FROM usuario");
         $rows = $stmt->fetchAll();
 
         return array_map(function ($row) {
-            return new UserModel($row['IdUsuario'], $row['Username'], $row['Email'],"", $row['CreateDate'], $row['Active']);
+            return new UserModel($row['IdUsuario'], $row['Username'], $row['Email'],"", $this->helperService->dateToString($row['CreateDate']), $row['Active']);
         }, $rows);
     }
 

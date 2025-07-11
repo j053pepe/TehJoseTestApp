@@ -19,7 +19,8 @@ class WebhookModel
         
         // Si $logWebhook es una cadena (JSON), la decodificamos a un array.
         // Si es null o vacía, se inicializa como array vacío.
-        $this->logWebhook = $logWebhook ? json_decode($logWebhook, true) : [];
+        $this->logWebhook = is_string($logWebhook) ? json_decode($logWebhook, true) : (is_array($logWebhook) ? $logWebhook : []);
+
 
         // Es buena práctica verificar si la decodificación fue exitosa
         if ($logWebhook && json_last_error() !== JSON_ERROR_NONE) {
